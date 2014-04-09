@@ -15,7 +15,7 @@
             }
            .main-nav 
             {
-                position: absolute; top: 70px; left: 430px;
+                border-bottom: 2px inset blue; position: absolute; top: 70px; left: 430px;
             }
         </style>
     </head>
@@ -26,6 +26,15 @@
         <div class="main-nav">
             {% block main_nav %}{% endblock main_nav %}
         </div> <!-- end main-nav -->
+        <div class="meta-nav">
+            {% if home_link %}
+                <a href="{{ url_for('index') }}">back home</a>
+            {% endif %}
+            {% if back_link %}
+                <a href="javascript: history.go(-1)">back</a>
+            {% endif %}
+            {% block meta_nav %}{% endblock meta_nav %}
+        </div>
         <div class="content">
             {% block content %}{% endblock content %}
         </div> <!-- end content -->

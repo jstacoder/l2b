@@ -1,0 +1,27 @@
+{% extends "nav.html" %}
+    {% block content %}
+        <div>
+            <p>your connecting from {{ var }}</p>
+        </div>
+    {% if not session.register %}
+        <h2>Login</h2>
+        <form method="post" action="{{ url_for('login') }}">
+            <label for="username">Username:</label>
+            <input type="text" name="username" id="username"/>
+            <label for="password">Password:</label>
+            <input type="password" name="password" id="password" />
+            <input type="submit" value="login" id="login-button" />
+        </form>
+    {% else %}
+        <h2>register</h2>
+        <form method="post" action="{{ url_for('register') }}">
+            <label for="username">Username:</label>
+            <input type="text" name="username" id="username"/>
+            <label for="password_1">Password:</label>
+            <input type="password" name="password_1" id="password_1" />
+            <label for="password_2">Re-enter:</label>
+            <input type="password" name="password_2" id="password_2" />
+            <input type="submit" value="register" id="login-button" />
+        </form>
+    {% endif %}
+{% endblock content %}
