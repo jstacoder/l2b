@@ -1,1 +1,9 @@
 a python powered blog site
+
+to run just type
+
+pip install -r requirments.txt
+
+python manage.py
+
+then go to localhost:5000 in your browser!
