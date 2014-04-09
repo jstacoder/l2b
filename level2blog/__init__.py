@@ -25,10 +25,12 @@ def contact_us():
 @app.route('/login',methods=['POST','GET'])
 def login():
     if request.method.upper() == 'POST':
+        enc = encrypt_password(request.form['password'])
         context = {
             'var' : {
                 'a':request.form['username'],
-                'b':request.form['password']
+                'b':request.form['password'],
+                'c':enc
                 }
             }
         return render_template("test.html",**context)
