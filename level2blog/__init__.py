@@ -1,75 +1,129 @@
-from flask import Flask, render_template, session, g, url_for, request
-from login_utils import encrypt_password, check_password
+#----------------------------------------------------------------------------#
+# Imports.
+#----------------------------------------------------------------------------#
+
+import os
+from functools import wraps
+from flask import (Flask, flash, redirect, url_for, request, session, g,
+render_template )
+from flask.ext.sqlalchemy import SQLAlchemy
+import logging
+from logging import Formatter, FileHandler
+from forms import LoginForm, RegisterForm, ForgotForm
+from register import register_user
+from login_utils import encrypt_password
+#----------------------------------------------------------------------------#
+# App Config.
+#----------------------------------------------------------------------------#
 
 app = Flask(__name__)
+app.config.from_object('config')
+db = SQLAlchemy(app)
+
+# Automatically tear down SQLAlchemy.
+@app.teardown_request
+def shutdown_session(exception=None):
+    db.session.remove()
+
+
+# Login required decorator.
+def login_required(test):
+    @wraps(test)
+    def wrap(*args, **kwargs):
+        if 'logged_in' in session:
+            return test(*args, **kwargs)
+        else:
+            flash('You need to login first.')
+            return redirect(url_for('login'))
+    return wrap
+
+#----------------------------------------------------------------------------#
+# Controllers.
+#----------------------------------------------------------------------------#
 
 @app.route('/')
-def index():
-    context = {'page_title':'Home'}
-    return render_template('index.html',**context)
-@app.route('/blog')
-def blog():
-    context = {'page_title':'Our Blog',
-               'home_link' : True}
-    return render_template('index.html',**context)
-@app.route('/about_us')
-def about_us():
-    context = {'page_title':'About Us',
-               'home_link' : True}
-    return render_template('index.html',**context)
-@app.route('/contact_us')
-def contact_us():
-    context = {'page_title':'Contact Us',
-               'home_link' : True}
-    return render_template('index.html',**context)
-@app.route('/login',methods=['POST','GET'])
+@app.route('/home')
+def home():
+    return render_template('pages/home.html')
+
+@login_required
+@app.route('/about')
+def about():
+    return render_template('pages/about.html')
+
+@app.route('/login',methods=['GET','POST'])
 def login():
-    if request.method.upper() == 'POST':
-        enc = encrypt_password(request.form['password'])
-        context = {
-            'var' : {
-                'a':request.form['username'],
-                'b':request.form['password'],
-                'c':enc
-                }
-            }
-        return render_template("test.html",**context)
-    else:
-        context = {
-            'var' : request.remote_addr,
-               'back_link' : True
-        }        
-        return render_template("login_form.html",**context)
+    error = None
+    if request.method == 'POST':
+        session['logged_in'] = True
+        flash('Thanks for logging in {}'.format(request.form['name']))
+        return redirect(url_for('home'))
+    form = LoginForm(request.form)
+    return render_template('forms/login.html',form=form,error=error)
+
+@app.route('/register',methods=['POST','GET'])
+def register():
+    if request.method == 'POST':
+        user, email, pw1, pw2 = request.form['name'],request.form['email'],request.form['password'],request.form['confirm']
+        if not pw1 == pw2:
+            flash("Passwords dont match, try again")
+            return redirect(url_for('register'))
+        else:
+            newUser = register_user(user,encrypt_password(pw1),email)
+            flash('Hi '+str(newUser)+', thank you for registering')
+            flash('Your email address is: '+newUser.get_email())
+            return redirect(url_for('home'))
+    form = RegisterForm(request.form)
+    return render_template('forms/register.html',form=form)
+
+@app.route('/forgot')
+def forgot():
+    form = ForgotForm(request.form)
+    return render_template('forms/forgot.html',form=form)
 
 @app.route('/logout')
 def logout():
+    session.pop('logged_in',None)
+    flash('You logged out, goodbye')
+    return redirect(url_for('home'))
+
+@app.route('/blog')
+def blog():
     pass
 
-@app.route('/register',methods=['GET','POST'])
-def register():
-    if request.method.upper() == 'POST':
-        session.register = True
-        username = request.form['username']
-        pass_a = encrypt_password(request.form['password_1'])
-        pass_b = request.form['password_2']
-        if check_password(pass_b,pass_a):
-            session.match = True
-            context = {
-                'var' : username,
-                'home_link': session.match
-            }
-        else:
-            context = {
-                    'back_link':True
-            }
-        return render_template("test.html",**context)
-    else:
-        session.register = True
-        context = {
-            'var' : request.remote_addr,
-            'home_link': True,
-            }
-    return render_template("login_form.html",**context)
 
-if __name__ == "__main__":
-    app.run()
+
+# Error handlers.
+
+@app.errorhandler(500)
+def internal_error(error):
+    db_session.rollback()
+    return render_template('errors/500.html'), 500
+
+@app.errorhandler(404)
+def internal_error(error):
+    return render_template('errors/404.html'), 404
+
+if not app.debug:
+    file_handler = FileHandler('error.log')
+    file_handler.setFormatter(Formatter('%(asctime)s %(levelname)s: %(message)s '
+    '[in %(pathname)s:%(lineno)d]'))
+    app.logger.setLevel(logging.INFO)
+    file_handler.setLevel(logging.INFO)
+    app.logger.addHandler(file_handler)
+    app.logger.info('errors')
+
+#----------------------------------------------------------------------------#
+# Launch.
+#----------------------------------------------------------------------------#
+
+# Default port:
+#if __name__ == '__main__':
+#    app.run()
+
+# Or specify port manually:
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
+
